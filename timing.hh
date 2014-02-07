@@ -44,6 +44,7 @@ void Timer::rdtscp(rdtscp_t *tscp) {
 
 Timer::Timer(uint64_t in_freq) : clock_freq(in_freq), have_tocked(false) {}
 
+inline
 void Timer::tick() {
   rdtscp(&timing_info);
   start_time = timing_info.tsc;
@@ -52,6 +53,7 @@ void Timer::tick() {
   have_tocked = false;
 }
 
+inline
 void Timer::tock() {
   rdtscp(&timing_info);
 

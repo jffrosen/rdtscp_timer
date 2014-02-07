@@ -3,10 +3,6 @@
 
 #include <cstdint>
 
-// This header files provides two functions (start_tick and end_tick)
-// that will provide a means for measuring time between two points.
-// In it's current iteration, multiple nested calls are NOT supported
-
 class Timer {
 private:
   typedef struct {
@@ -24,12 +20,12 @@ private:
 
 public:
   Timer(uint64_t in_freq);
-  void tick();
-  void tock();
-  double get_time(); // return
+  void tick(); // start timer
+  void tock(); // stop timer
+  double get_time(); // get time b/t tick and tock
 };
 
-inline void Timer::rdtscp(rdtscp_t *tscp) {
+void Timer::rdtscp(rdtscp_t *tscp) {
   unsigned cycles_low, cycles_high;
   unsigned pid; // processor id
 

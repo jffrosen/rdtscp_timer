@@ -1,72 +1,57 @@
 #ifndef __TIMING_HH__
 #define __TIMING_HH__
 
-#include <cstdint>
+#include <stdint.h>
+#include <time.h>
+
+#define BILLION  1000000000L
+#define GHZ_TO_HZ BILLION
+
+class Clock {
+	public:
+		virtual void stop_time() = 0;
+		virtual double report_time() = 0;
+};
+
+class TimeStampClock : public Clock {
+	private:
+  	typedef struct {
+    	uint8_t pid;
+    	uint64_t tsc;
+  	} rdtscp_t;
+
+		uint64_t clock_freq;
+  	rdtscp_t timing_info;
+  	void rdtscp(rdtscp_t *tscp);
+
+	public:
+		TimeStampClock(uint64_t);
+		void stop_time();
+		double report_time();
+};
+
+class SysTimeClock : public Clock {
+	private:
+		struct timespec ts;
+
+	public:
+		void stop_time();
+		double report_time();
+};
 
 class Timer {
 private:
-  typedef struct {
-    uint8_t pid;
-    uint64_t tsc;
-  } rdtscp_t;
-
-  uint64_t clock_freq, start_time;
-  uint8_t start_pid;
-  rdtscp_t timing_info;
+	Clock *start_clock, *end_clock;
   bool have_tocked;
   
-  void rdtscp(rdtscp_t *tscp);
   Timer() {};
 
 public:
-  Timer(uint64_t in_freq);
+  Timer(double in_freq);
+	~Timer();
   void tick(); // start timer
   void tock(); // stop timer
   double get_time(); // get time b/t tick and tock
 };
-
-void Timer::rdtscp(rdtscp_t *tscp) {
-  unsigned cycles_low, cycles_high;
-  unsigned pid; // processor id
-
-  asm volatile ("RDTSCP\n\t" // rdtscp into eax and edx
-                "mov %%edx, %0\n\t"
-                "mov %%eax, %1\n\t"
-                "mov %%ecx, %2\n\t"
-                :"=r" (cycles_high), "=r" (cycles_low), "=r" (pid) //store in vars
-                :// no input
-                :"%eax", "%edx", "%ecx" // clobbered by rdtscp
-               );
-  
-  tscp->tsc = ((uint64_t)cycles_high << 32) | cycles_low;
-  tscp->pid = pid;
-}
-
-Timer::Timer(uint64_t in_freq) : clock_freq(in_freq), have_tocked(false) {}
-
-inline
-void Timer::tick() {
-  rdtscp(&timing_info);
-  start_time = timing_info.tsc;
-  start_pid = timing_info.pid;
-
-  have_tocked = false;
-}
-
-inline
-void Timer::tock() {
-  rdtscp(&timing_info);
-
-  have_tocked = true;
-}
-
-// return -1 if failure due to thread switching CPUs or incorrect tick/tock use
-double Timer::get_time() {
-  // check that we're 
-  if (!have_tocked || (start_pid != timing_info.pid))
-    return -1;
-
-  return (static_cast<double>(timing_info.tsc) - static_cast<double>(start_time)) / clock_freq;
-}
 
 #endif
